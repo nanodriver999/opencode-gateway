@@ -1,0 +1,42 @@
+name: Free-model E2E (manual)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-e2e:
+    if: ${{ vars.ENABLE_FREE_MODEL_E2E == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GATEWAY_API_KEY: ${{ secrets.GATEWAY_API_KEY }}
+      OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+      E2E_MODEL: opencode/muse-spark-1.3-contributor-free
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save openai
+      - run: npm install --global opencode-ai
+      - name: Check secrets
+        run: |
+          test -n "$GATEWAY_API_KEY" || { echo "::error::GATEWAY_API_KEY is missing"; exit 1; }
+          test -n "$OPENCODE_API_KEY" || { echo "::error::OPENCODE_API_KEY is missing"; exit 1; }
+      - name: Start gateway
+        env:
+          OPENCODE_MODE: managed
+          GATEWAY_HOST: 127.0.0.1
+          OPENCODE_PROVIDER: opencode
+          OPENCODE_MODEL: muse-spark-1.3-contributor-free
+        run: |
+          npm run build
+          node dist/index.js >gateway.log 2>&1 &
+          for i in $(seq 1 45); do
+            if curl -fsS -H "Authorization: Bearer $GATEWAY_API_KEY" http://127.0.0.1:3000/ready >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo "::error::Gateway did not become ready"
+          exit 1
+      - run: node scripts/e2e-free-model.mjs
