@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import { createRequestGuard } from "./security/request-guard.js";
 import type { GatewayConfig } from "./config.js";
 import type { OpenCodeRuntime } from "./opencode/client.js";
 import { verifyOpenCode } from "./opencode/client.js";
@@ -9,10 +10,16 @@ import { normalizeChatRequest } from "./openai/chat-contract.js";
 
 export function createApp(config: GatewayConfig, runtime: OpenCodeRuntime) {
   const app = Fastify({ logger: { redact: ["req.headers.authorization", "req.headers.x-api-key"] }, bodyLimit: 1024 * 1024 });
+  const guard = createRequestGuard(config.GATEWAY_API_KEY, config.GATEWAY_RATE_LIMIT);
   app.addHook("onRequest", async (request, reply) => {
     if (request.url === "/health") return;
-    if (request.headers.authorization !== `Bearer ${config.GATEWAY_API_KEY}`) {
+    if (!guard.authorized(request.headers.authorization)) {
       return reply.code(401).send({error:{message:"Invalid API key",type:"authentication_error",code:"invalid_api_key"}});
+    }
+    if (!guard.allow(request.ip)) {
+      return reply.code(429).header("retry-after", "60").send({
+        error:{message:"Rate limit exceeded",type:"rate_limit_error",code:"rate_limit_exceeded"}
+      });
     }
   });
   app.get("/health", async () => ({ status: "ok" }));
