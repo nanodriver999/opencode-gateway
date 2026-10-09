@@ -1,7 +1,5 @@
 name: Custom shadow tool isolation experiment
 on:
-  push:
-    branches: ["test/24-tool-shadow-sandbox"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -22,8 +20,10 @@ jobs:
           cp sandbox/.opencode/tools/*.ts "$RUNNER_TEMP/shadow-workspace/.opencode/tools/"
           cd "$RUNNER_TEMP/shadow-workspace"
           printf '{"name":"sandbox-tools","private":true,"type":"module"}\n' > package.json
-          npm install --no-save @opencode-ai/plugin
+          npm install --no-save @opencode-ai/plugin tsx
           printf 'DO_NOT_MODIFY\n' > protected.txt
+      - name: Verify all shadow handlers reject execution
+        run: ./node_modules/.bin/tsx scripts/test-shadow-rejection.mjs
       - name: Start OpenCode in isolated workspace
         run: |
           cd "$RUNNER_TEMP/shadow-workspace"
