@@ -35,6 +35,9 @@ jobs:
           done
           echo "::error::Gateway did not become ready"
           exit 1
+      - name: Probe anonymous OpenCode Zen (diagnostic only)
+        continue-on-error: true
+        run: node scripts/probe-anonymous-zen.mjs
       - name: Invoke free Muse model using OpenAI SDK
         run: node scripts/e2e-free-model.mjs
       - name: Report operational diagnostics on failure
