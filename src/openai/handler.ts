@@ -16,7 +16,8 @@ export async function completeChat(runtime: OpenCodeRuntime, payload: unknown, d
       sessionID,
       model,
       ...(request.system ? { system: request.system } : {}),
-      parts: [{ type: "text", text: request.prompt }],
+      parts: request.parts,
+      ...(request.format ? {format:request.format} : {}),
       tools: { bash: false, edit: false, write: false, read: false, glob: false, grep: false, webfetch: false },
     });
     if (result.error || !result.data) throw new Error("OpenCode model response failed");

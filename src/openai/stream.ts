@@ -21,7 +21,7 @@ export async function* streamChat(runtime: OpenCodeRuntime, body: unknown, provi
     iterator = events.stream[Symbol.asyncIterator]();
     const started = await runtime.client.session.promptAsync({
       sessionID, model, ...(input.system ? {system: input.system} : {}),
-      parts: [{type:"text", text: input.prompt}],
+      parts: input.parts,
       tools: {bash:false,edit:false,write:false,read:false,glob:false,grep:false,webfetch:false},
     });
     if (started.error) throw new Error("OpenCode prompt failed");
