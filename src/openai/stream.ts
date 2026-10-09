@@ -17,7 +17,7 @@ export async function* streamChat(runtime: OpenCodeRuntime, body: unknown, provi
   let iterator: AsyncIterator<any> | undefined;
   try {
     const events = await runtime.client.event.subscribe();
-    if (events.error || !events.stream) throw new Error("OpenCode event stream unavailable");
+    if (!events.stream) throw new Error("OpenCode event stream unavailable");
     iterator = events.stream[Symbol.asyncIterator]();
     const started = await runtime.client.session.promptAsync({
       sessionID, model, ...(input.system ? {system: input.system} : {}),
