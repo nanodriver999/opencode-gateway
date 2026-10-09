@@ -19,7 +19,7 @@ export async function completeChat(runtime: OpenCodeRuntime, payload: unknown, d
       ...(request.system ? { system: request.system } : {}),
       parts: request.parts,
       ...(request.format ? {format:request.format} : {}),
-      tools: {},
+      tools: { bash: false, edit: false, write: false, read: false, glob: false, grep: false, webfetch: false },
     }, {signal}),timeoutMs);
     if (result.error || !result.data) throw new Error("OpenCode model response failed");
     if (result.data.info.error) throw new Error("OpenCode model returned an error");
