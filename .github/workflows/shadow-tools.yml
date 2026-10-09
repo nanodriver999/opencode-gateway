@@ -1,6 +1,8 @@
 name: Custom shadow tool isolation experiment
 on:
   workflow_dispatch:
+  push:
+    branches: ["test/24-tool-shadow-sandbox"]
 permissions:
   contents: read
 jobs:
@@ -23,7 +25,9 @@ jobs:
           npm install --no-save @opencode-ai/plugin tsx
           printf 'DO_NOT_MODIFY\n' > protected.txt
       - name: Verify all shadow handlers reject execution
-        run: ./node_modules/.bin/tsx scripts/test-shadow-rejection.mjs
+        run: |
+          npm install --no-save @opencode-ai/plugin tsx
+          ./node_modules/.bin/tsx scripts/test-shadow-rejection.mjs
       - name: Start OpenCode in isolated workspace
         run: |
           cd "$RUNNER_TEMP/shadow-workspace"
