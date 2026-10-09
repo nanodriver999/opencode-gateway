@@ -5,7 +5,7 @@ Clients using OpenAI SDK / LangChain / LangGraph supply function schemas and exe
 
 ## Staged PRs
 1. Non-streaming function-call adapter: validate `tools`, `tool_choice`, serialize prior assistant/tool history, return OpenAI `tool_calls`. Use OpenCode JSON-schema output as a model decision (not native tool API). Never execute a tool.
-2. Stream tool calls as SSE deltas, with stable IDs, indexes and `finish_reason: "tool_calls"`.
+2. Stream tool calls as SSE deltas, with stable IDs, indexes and `finish_reason: "tool_calls"`. **Implemented as buffered SSE:** upstream structured decision finishes before frames are sent. True token-time streaming remains future work.
 3. Validate multi-turn role fidelity, OpenAI SDK and LangChain `bind_tools` compatibility; avoid interpreting flattened transcript as native roles.
 4. Add cancellation, timeout, controlled retries and safe errors.
 5. Real E2E with `opencode/muse-spark-1.3-contributor-free`; never use paid-model fallback.
