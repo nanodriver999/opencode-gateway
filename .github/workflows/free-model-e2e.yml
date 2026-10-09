@@ -1,8 +1,6 @@
-name: Free-model E2E (anonymous)
+name: Alternative free-model E2E (anonymous)
 on:
   workflow_dispatch:
-  push:
-    branches: ["test/20-alternative-free-models"]
 permissions:
   contents: read
 jobs:
