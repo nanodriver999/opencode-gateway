@@ -34,6 +34,7 @@ export function prepareToolRequest(body:unknown) {
   let instructions="";
   let last="";
   const callIDs=new Set<string>();
+  const unresolved=new Set<string>();
   for(const m of body.messages) {
     if(!obj(m)||typeof m.role!=="string") throw new ChatInputError("Invalid message");
     if(m.role==="system"||m.role==="developer") {
@@ -41,8 +42,12 @@ export function prepareToolRequest(body:unknown) {
       instructions+=m.content+"\n";
       continue;
     }
-    if(m.role==="user"&&typeof m.content==="string") transcript.push("USER: "+JSON.stringify(m.content));
+    if(m.role==="user"&&typeof m.content==="string") {
+      if(unresolved.size) throw new ChatInputError("Pending tool results");
+      transcript.push("USER: "+JSON.stringify(m.content));
+    }
     else if(m.role==="assistant") {
+      if(unresolved.size) throw new ChatInputError("Pending tool results");
       if(m.content!==null&&m.content!==undefined&&typeof m.content!=="string") throw new ChatInputError("Invalid assistant content");
       if(typeof m.content==="string") transcript.push("ASSISTANT: "+JSON.stringify(m.content));
       if(m.tool_calls!==undefined) {
@@ -50,15 +55,21 @@ export function prepareToolRequest(body:unknown) {
         for(const c of m.tool_calls) {
           if(!obj(c)||typeof c.id!=="string"||!obj(c.function)||typeof c.function.name!=="string"||typeof c.function.arguments!=="string")
             throw new ChatInputError("Invalid tool call history");
+          if(callIDs.has(c.id)) throw new ChatInputError("Duplicate tool call ID");
+          try { const parsed=JSON.parse(c.function.arguments); if(!obj(parsed)) throw Error("Invalid arguments"); }
+          catch { throw new ChatInputError("Tool arguments must be JSON object"); }
           callIDs.add(c.id);
+          unresolved.add(c.id);
           transcript.push("ASSISTANT_CALL: "+JSON.stringify({id:c.id,name:c.function.name,arguments:c.function.arguments}));
         }
       }
     } else if(m.role==="tool"&&typeof m.content==="string"&&typeof m.tool_call_id==="string"&&callIDs.has(m.tool_call_id)) {
+      if(!unresolved.delete(m.tool_call_id)) throw new ChatInputError("Duplicate tool result");
       transcript.push("CLIENT_TOOL_RESULT: "+JSON.stringify({id:m.tool_call_id,content:m.content}));
     } else throw new ChatInputError("Invalid message role or tool result");
     last=m.role;
   }
+  if(unresolved.size) throw new ChatInputError("Missing tool results");
   if(last!=="user"&&last!=="tool") throw new ChatInputError("Last message must be user or tool");
   const selected=typeof choice==="string"?choice:(choice as {function:{name:string}}).function.name;
   return {model:body.model,tools,choice,
