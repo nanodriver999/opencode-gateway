@@ -20,7 +20,7 @@ export async function* streamToolRequest(runtime: OpenCodeRuntime, body: unknown
     for (const [index, call] of choice.message.tool_calls.entries()) {
       yield chunk({ tool_calls: [{ index, id: call.id, type: "function",
         function: { name: call.function.name, arguments: "" } }] });
-      const args = call.function.arguments;
+      const args = String(call.function.arguments);
       for (let i = 0; i < args.length; i += 128) {
         yield chunk({ tool_calls: [{ index, function: { arguments: args.slice(i, i + 128) } }] });
       }
@@ -30,5 +30,5 @@ export async function* streamToolRequest(runtime: OpenCodeRuntime, body: unknown
     for (let i = 0; i < content.length; i += 128)
       yield chunk({ content: content.slice(i, i + 128) });
   }
-  yield chunk({}, choice.finish_reason);
+  yield chunk({}, choice.finish_reason as "stop" | "tool_calls");
 }
