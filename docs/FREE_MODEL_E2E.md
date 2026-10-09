@@ -26,3 +26,18 @@ Test assertions cover model listing, text response, and SSE response; they do no
 No candidate completed both chat and SSE, so this **live E2E failed**; do not mark the gateway as successfully integrated with these models. A separate anonymous Zen diagnostic still showed HTTP 403 `FreeTierError` for the previous Muse Spark model. A 502 on other models is not sufficient evidence of exactly the same root cause because Gateway currently masks upstream error details.
 
 The manual workflow runs candidates sequentially, never falls back to paid models, and does not require an OpenCode account. The provider model roster changes over time; use the model catalog as the source of truth for names at execution time.
+
+
+## Direct provider endpoint comparison (2026-10-10 KST)
+
+[GitHub Actions diagnostic run](https://github.com/nanodriver999/opencode-gateway/actions/runs/37984694237) tested anonymous calls independently of Gateway:
+
+| Model | Native Zen endpoint | HTTP status | Provider error |
+|---|---|---|---|
+| `big-pickle` | `/zen/v1/chat/completions` | 403 | `FreeTierError` |
+| `nemotron-3-ultra-free` | `/zen/v1/chat/completions` | 403 | `FreeTierError` |
+| `muse-spark-1.3-contributor-free` | `/zen/v1/responses` | 403 | `FreeTierError` |
+
+All requests used `Authorization: Bearer public`; none used a personal account key. This test shows the upstream error occurs without Gateway translation and is not solely caused by using the wrong endpoint for Muse Spark. It **does not** establish whether the cause is the GitHub-hosted runner IP, account entitlement, or a client-specific policy. The legacy Gateway 502 cannot be taken as the original provider status without these direct comparisons.
+
+Actual anonymous end-to-end chat and SSE still fail. No paid fallback is used.
