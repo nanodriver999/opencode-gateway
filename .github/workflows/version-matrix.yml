@@ -1,7 +1,5 @@
 name: OpenCode version matrix (live)
 on:
-  push:
-    branches: [test/22-version-matrix]
   workflow_dispatch:
 permissions:
   contents: read
