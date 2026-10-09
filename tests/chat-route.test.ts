@@ -26,9 +26,9 @@ describe("POST /v1/chat/completions", () => {
     expect(session.delete).toHaveBeenCalledWith({sessionID:"session-1"});
     await app.close();
   });
-  it("rejects streaming until implemented", async () => {
+  it("rejects unsupported multiple choices", async () => {
     const {app,session}=fixture();
-    const response=await app.inject({method:"POST",url:"/v1/chat/completions",headers,payload:{model:"free",messages:[{role:"user",content:"Hi"}],stream:true}});
+    const response=await app.inject({method:"POST",url:"/v1/chat/completions",headers,payload:{model:"free",messages:[{role:"user",content:"Hi"}],n:2}});
     expect(response.statusCode).toBe(400);
     expect(session.create).not.toHaveBeenCalled();
     await app.close();
