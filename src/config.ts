@@ -4,6 +4,7 @@ const configSchema = z.object({
   GATEWAY_HOST: z.string().default("127.0.0.1"),
   GATEWAY_PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   GATEWAY_API_KEY: z.string().min(1),
+  GATEWAY_UPSTREAM_TIMEOUT_MS: z.coerce.number().int().min(1000).max(300000).default(60000),
   GATEWAY_RATE_LIMIT: z.coerce.number().int().min(1).max(100000).default(120),
   OPENCODE_MODE: z.enum(["managed", "external"]).default("external"),
   OPENCODE_URL: z.string().url().default("http://127.0.0.1:4096"),
