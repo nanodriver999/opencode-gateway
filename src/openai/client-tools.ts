@@ -1,3 +1,4 @@
+import Ajv from "ajv";
 import { withDeadline } from "../opencode/deadline.js";
 import { randomUUID } from "node:crypto";
 import type { OpenCodeRuntime } from "../opencode/client.js";
@@ -93,9 +94,14 @@ export async function completeToolRequest(runtime:OpenCodeRuntime,body:unknown,d
     let response:unknown;
     try {response=typeof raw==="string"?JSON.parse(raw):raw;} catch {throw new Error("Invalid model JSON");}
     if(!obj(response)||!Array.isArray(response.calls)||!["message","tool_calls"].includes(response.kind as string)) throw new Error("Invalid model decision");
+    const validators = new Map(input.tools.map(tool => {
+      try { return [tool.name, new Ajv({allErrors:true, strict:false}).compile(tool.parameters)] as const; }
+      catch { throw new ChatInputError("Invalid function parameter schema"); }
+    }));
     const allowed=new Set(input.tools.map(t=>t.name));
     const calls=response.calls.map((c:unknown)=>{
       if(!obj(c)||typeof c.name!=="string"||!allowed.has(c.name)||!obj(c.arguments)) throw new Error("Invalid model function call");
+      if(!validators.get(c.name)?.(c.arguments)) throw new Error("Tool arguments violate declared JSON Schema");
       if(typeof input.choice==="object"&&(input.choice as {function:{name:string}}).function.name!==c.name) throw new Error("Unexpected function");
       return {id:"call_"+randomUUID().replace(/-/g,""),type:"function" as const,function:{name:c.name,arguments:JSON.stringify(c.arguments)}};
     });
