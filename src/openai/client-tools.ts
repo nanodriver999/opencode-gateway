@@ -95,7 +95,7 @@ export async function completeToolRequest(runtime:OpenCodeRuntime,body:unknown,d
     try {response=typeof raw==="string"?JSON.parse(raw):raw;} catch {throw new Error("Invalid model JSON");}
     if(!obj(response)||!Array.isArray(response.calls)||!["message","tool_calls"].includes(response.kind as string)) throw new Error("Invalid model decision");
     const validators = new Map(input.tools.map(tool => {
-      try { return [tool.name, new Ajv({allErrors:true, strict:false}).compile(tool.parameters)] as const; }
+      try { return [tool.name, new Ajv.default({allErrors:true, strict:false}).compile(tool.parameters)] as const; }
       catch { throw new ChatInputError("Invalid function parameter schema"); }
     }));
     const allowed=new Set(input.tools.map(t=>t.name));
