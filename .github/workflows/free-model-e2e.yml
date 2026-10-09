@@ -1,6 +1,8 @@
 name: Alternative free-model E2E (anonymous)
 on:
   workflow_dispatch:
+  push:
+    branches: ["test/21-free-provider-diagnostics"]
 permissions:
   contents: read
 jobs:
@@ -33,6 +35,8 @@ jobs:
           done
           echo "::error::Gateway did not become ready"
           exit 1
+      - name: Compare correct anonymous Zen endpoint responses
+        run: node scripts/probe-free-provider.mjs
       - name: Probe anonymous OpenCode Zen (diagnostic only)
         continue-on-error: true
         run: node scripts/probe-anonymous-zen.mjs
