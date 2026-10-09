@@ -1,0 +1,46 @@
+name: Custom shadow tool isolation experiment
+on:
+  push:
+    branches: ["test/24-tool-shadow-sandbox"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install OpenCode
+        run: npm install -g opencode-ai
+      - name: Create isolated project
+        run: |
+          mkdir -p "$RUNNER_TEMP/shadow-workspace/.opencode/tools"
+          cp sandbox/.opencode/tools/*.ts "$RUNNER_TEMP/shadow-workspace/.opencode/tools/"
+          cd "$RUNNER_TEMP/shadow-workspace"
+          printf '{"name":"sandbox-tools","private":true,"type":"module"}\n' > package.json
+          npm install --no-save @opencode-ai/plugin
+          printf 'DO_NOT_MODIFY\n' > protected.txt
+      - name: Start OpenCode in isolated workspace
+        run: |
+          cd "$RUNNER_TEMP/shadow-workspace"
+          opencode serve --hostname 127.0.0.1 --port 4096 >"$RUNNER_TEMP/opencode.log" 2>&1 &
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:4096/global/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          tail -n 30 "$RUNNER_TEMP/opencode.log"
+          exit 1
+      - name: Inspect custom tool discovery and actual free model inference
+        run: node scripts/probe-shadow-tools.mjs
+      - name: Confirm no local mutation
+        if: always()
+        run: |
+          if ! grep -qx 'DO_NOT_MODIFY' "$RUNNER_TEMP/shadow-workspace/protected.txt"; then exit 1; fi
+          if test -e "$RUNNER_TEMP/shadow-workspace/forbidden-output.txt"; then echo 'UNEXPECTED_FILE_CREATED'; exit 1; fi
+      - name: Diagnostics
+        if: failure()
+        run: tail -n 65 "$RUNNER_TEMP/opencode.log" || true
