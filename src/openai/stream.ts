@@ -2,7 +2,7 @@ import type { OpenCodeRuntime } from "../opencode/client.js";
 import { normalizeChatRequest, splitModel } from "./chat-contract.js";
 import { randomUUID } from "node:crypto";
 
-export async function* streamChat(runtime: OpenCodeRuntime, body: unknown, provider: string) {
+export async function* streamChat(runtime: OpenCodeRuntime, body: unknown, provider: string, signal?: AbortSignal, timeoutMs = 60000) {
   const input = normalizeChatRequest({ ...(body as object), stream: false });
   const model = splitModel(input.model, provider);
   const created = await runtime.client.session.create();
@@ -15,18 +15,24 @@ export async function* streamChat(runtime: OpenCodeRuntime, body: unknown, provi
     choices: [{ index: 0, delta, finish_reason }],
   });
   let iterator: AsyncIterator<any> | undefined;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const cancel = () => controller.abort();
+  signal?.addEventListener("abort", cancel, {once:true});
+  if (signal?.aborted) controller.abort();
   try {
-    const events = await runtime.client.event.subscribe();
+    const events = await runtime.client.event.subscribe(undefined, {signal:controller.signal});
     if (!events.stream) throw new Error("OpenCode event stream unavailable");
     iterator = events.stream[Symbol.asyncIterator]();
     const started = await runtime.client.session.promptAsync({
       sessionID, model, ...(input.system ? {system: input.system} : {}),
       parts: input.parts,
       tools: {bash:false,edit:false,write:false,read:false,glob:false,grep:false,webfetch:false},
-    });
+    }, {signal:controller.signal});
     if (started.error) throw new Error("OpenCode prompt failed");
     yield chunk({role:"assistant"});
     while (true) {
+      if (controller.signal.aborted) throw new Error("Stream cancelled or timed out");
       const event = await iterator.next();
       if (event.done) throw new Error("OpenCode event stream closed unexpectedly");
       const e = event.value;
@@ -41,7 +47,10 @@ export async function* streamChat(runtime: OpenCodeRuntime, body: unknown, provi
       }
     }
   } finally {
-    if (iterator?.return) await iterator.return().catch(() => {});
+    clearTimeout(timeout);
+    signal?.removeEventListener("abort", cancel);
+    controller.abort();
+    if (iterator?.return) await Promise.race([iterator.return().catch(() => {}), new Promise(resolve => setTimeout(resolve, 1000))]);
     await runtime.client.session.abort({sessionID}).catch(() => {});
     await runtime.client.session.delete({sessionID}).catch(() => {});
   }

@@ -86,8 +86,10 @@ export function createApp(config: GatewayConfig, runtime: OpenCodeRuntime) {
       }
       reply.hijack();
       reply.raw.writeHead(200, {"content-type":"text/event-stream","cache-control":"no-cache","connection":"keep-alive"});
+      const cancellation = new AbortController();
+      reply.raw.on("close", () => { if (!reply.raw.writableFinished) cancellation.abort(); });
       try {
-        for await (const chunk of streamChat(runtime, request.body, config.OPENCODE_PROVIDER)) {
+        for await (const chunk of streamChat(runtime, request.body, config.OPENCODE_PROVIDER, cancellation.signal, config.GATEWAY_UPSTREAM_TIMEOUT_MS)) {
           if (reply.raw.destroyed) break;
           reply.raw.write("data: " + JSON.stringify(chunk) + "\n\n");
         }
