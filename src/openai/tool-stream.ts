@@ -26,7 +26,7 @@ export async function* streamToolRequest(runtime: OpenCodeRuntime, body: unknown
       }
     }
   } else {
-    const content = choice.message.content || "";
+    const content = typeof choice.message.content === "string" ? choice.message.content : "";
     for (let i = 0; i < content.length; i += 128)
       yield chunk({ content: content.slice(i, i + 128) });
   }
