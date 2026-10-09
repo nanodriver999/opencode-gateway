@@ -16,7 +16,7 @@ describe("client-side tool calling adapter",()=>{
     const response=await completeToolRequest(runtime,body,"opencode");
     expect(response.choices[0].finish_reason).toBe("tool_calls");
     expect(response.choices[0].message.tool_calls?.[0].function.arguments).toBe('{"city":"Seoul"}');
-    expect(session.prompt).toHaveBeenCalledWith(expect.objectContaining({tools:expect.objectContaining({bash:false,edit:false})}));
+    expect(session.prompt).toHaveBeenCalledWith(expect.objectContaining({tools:expect.objectContaining({bash:false,edit:false})}), expect.objectContaining({signal:expect.any(AbortSignal)}));
     expect(session.delete).toHaveBeenCalledWith({sessionID:"s1"});
   });
   it("includes tool result in transcript",()=>{

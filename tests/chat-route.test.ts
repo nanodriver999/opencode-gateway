@@ -22,7 +22,7 @@ describe("POST /v1/chat/completions", () => {
     expect(response.statusCode).toBe(200);
     expect(response.json().choices[0].message.content).toBe("Hello!");
     expect(response.json().usage.total_tokens).toBe(7);
-    expect(session.prompt).toHaveBeenCalledWith(expect.objectContaining({model:{providerID:"opencode",modelID:"muse-spark-1.3-contributor-free"}}));
+    expect(session.prompt).toHaveBeenCalledWith(expect.objectContaining({model:{providerID:"opencode",modelID:"muse-spark-1.3-contributor-free"}}), expect.objectContaining({signal:expect.any(AbortSignal)}));
     expect(session.delete).toHaveBeenCalledWith({sessionID:"session-1"});
     await app.close();
   });

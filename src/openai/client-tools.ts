@@ -1,3 +1,4 @@
+import { withDeadline } from "../opencode/deadline.js";
 import { randomUUID } from "node:crypto";
 import type { OpenCodeRuntime } from "../opencode/client.js";
 import { ChatInputError, splitModel } from "./chat-contract.js";
@@ -77,16 +78,16 @@ export function prepareToolRequest(body:unknown) {
     prompt:transcript.join("\n")};
 }
 
-export async function completeToolRequest(runtime:OpenCodeRuntime,body:unknown,defaultProvider:string) {
+export async function completeToolRequest(runtime:OpenCodeRuntime,body:unknown,defaultProvider:string,timeoutMs=60000) {
   const input=prepareToolRequest(body);
   const model=splitModel(input.model,defaultProvider);
   const created=await runtime.client.session.create();
   if(created.error||!created.data?.id) throw new Error("Session creation failed");
   const sessionID=created.data.id;
   try {
-    const result=await runtime.client.session.prompt({sessionID,model,system:input.system,
+    const result=await withDeadline(signal=>runtime.client.session.prompt({sessionID,model,system:input.system,
       parts:[{type:"text",text:input.prompt}],format:{type:"json_schema",schema},
-      tools:{bash:false,edit:false,write:false,read:false,glob:false,grep:false,webfetch:false}});
+      tools:{bash:false,edit:false,write:false,read:false,glob:false,grep:false,webfetch:false}}, {signal}),timeoutMs);
     if(result.error||!result.data||result.data.info.error) throw new Error("OpenCode model error");
     const raw=result.data.info.structured??result.data.parts.filter(p=>p.type==="text").map(p=>p.text).join("");
     let response:unknown;
