@@ -1,0 +1,17 @@
+services:
+  gateway:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      GATEWAY_HOST: 0.0.0.0
+      GATEWAY_PORT: 3000
+      OPENCODE_MODE: managed
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - opencode-data:/home/node/.local/share/opencode
+    security_opt:
+      - no-new-privileges:true
+volumes:
+  opencode-data:
