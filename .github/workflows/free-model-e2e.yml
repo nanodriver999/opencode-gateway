@@ -1,8 +1,6 @@
 name: Alternative free-model E2E (anonymous)
 on:
   workflow_dispatch:
-  push:
-    branches: ["test/21-free-provider-diagnostics"]
 permissions:
   contents: read
 jobs:
