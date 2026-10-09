@@ -18,7 +18,6 @@ export async function connectOpenCode(config: GatewayConfig): Promise<OpenCodeRu
   const instance: ManagedInstance = await createOpencode({
     hostname: "127.0.0.1",
     port: 0,
-    config: {permission: {"*": "deny"}},
   });
   return {
     client: instance.client,
