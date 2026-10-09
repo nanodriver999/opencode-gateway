@@ -22,10 +22,10 @@ export function createApp(config: GatewayConfig, runtime: OpenCodeRuntime) {
     try { return await listModels(runtime); }
     catch { return reply.code(502).send({error:{message:"Unable to retrieve OpenCode models",type:"api_error",code:"upstream_error"}}); }
   });
-  app.get<{Params:{id:string}}>("/v1/models/:id", async (request, reply) => {
+  app.get<{Params:{"*":string}}>("/v1/models/*", async (request, reply) => {
     try {
       const listed = await listModels(runtime);
-      const found = listed.data.find((model) => model.id === request.params.id);
+      const found = listed.data.find((model) => model.id === request.params["*"]);
       if (!found) return reply.code(404).send({error:{message:"Model not found",type:"invalid_request_error",code:"model_not_found"}});
       return found;
     } catch { return reply.code(502).send({error:{message:"Unable to retrieve OpenCode models",type:"api_error",code:"upstream_error"}}); }
