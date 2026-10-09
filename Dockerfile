@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim AS build
+FROM public.ecr.aws/docker/library/node:22-bookworm-slim AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm install --no-audit --no-fund
@@ -6,7 +6,7 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
-FROM node:22-bookworm-slim
+FROM public.ecr.aws/docker/library/node:22-bookworm-slim
 WORKDIR /app
 RUN npm install -g opencode-ai && mkdir -p /home/node/.local/share/opencode
 COPY package*.json ./
