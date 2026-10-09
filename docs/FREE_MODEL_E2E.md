@@ -41,3 +41,32 @@ The manual workflow runs candidates sequentially, never falls back to paid model
 All requests used `Authorization: Bearer public`; none used a personal account key. This test shows the upstream error occurs without Gateway translation and is not solely caused by using the wrong endpoint for Muse Spark. It **does not** establish whether the cause is the GitHub-hosted runner IP, account entitlement, or a client-specific policy. The legacy Gateway 502 cannot be taken as the original provider status without these direct comparisons.
 
 Actual anonymous end-to-end chat and SSE still fail. No paid fallback is used.
+
+# OpenCode CLI × SDK live compatibility matrix
+
+This test uses the **actual** `opencode/muse-spark-1.3-contributor-free` model. It runs `opencode serve` as an external process and compares direct HTTP with installed SDKs. It is not a mocked result. Tested on GitHub-hosted Ubuntu runners with no OpenCode credential supplied by the workflow.
+
+## Method
+
+- CLI versions: pinned `1.18.34` (release SHA-256 verified) and current `opencode-ai` from npm.
+- Client versions: direct OpenCode session HTTP, `@opencode-ai/sdk@1.1.53`, `@opencode-ai/sdk@1.4.3`.
+- Model: `opencode/muse-spark-1.3-contributor-free`, user prompt requests `MATRIX_OK`.
+- For the SDK route, a successful result requires a response including `MATRIX_OK` and no `info.error`.
+- The matrix script records one `MATRIX_RESULT` object per run. Real-time provider availability and entitlement may change. No paid model fallback.
+
+## Results — 2026-10-10 KST
+
+[Live matrix run](https://github.com/nanodriver999/opencode-gateway/actions/runs/37990915765)
+
+| CLI | Client | Result |
+|---|---|---|
+| 1.18.34 | SDK 1.1.53 | PASS, live model reply |
+| 1.18.34 | SDK 1.4.3 | PASS, live model reply |
+| latest | direct HTTP | PASS, live model reply |
+| latest | SDK 1.1.53 | PASS, live model reply |
+| latest | SDK 1.4.3 | PASS, live model reply |
+| 1.18.34 | direct HTTP | See run status / logs |
+
+Passing with two CLI generations and both SDK versions shows that the earlier anonymous free-tier failure is **not solely an SDK version mismatch**. The matrix starts a *standalone* `opencode serve` process, unlike the gateway's SDK-managed `createOpencode()` path. That lifecycle/launch distinction remains a leading hypothesis and should be tested directly before changing provider policies or SDK versions.
+
+This workflow is manually runnable on `main` through Actions → OpenCode version matrix (live).
