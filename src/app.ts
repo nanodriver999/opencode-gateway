@@ -44,9 +44,9 @@ export function createApp(config: GatewayConfig, runtime: OpenCodeRuntime) {
       try {
         for await (const chunk of streamChat(runtime, request.body, config.OPENCODE_PROVIDER)) {
           if (reply.raw.destroyed) break;
-          reply.raw.write("data: " + JSON.stringify(chunk) + "\\n\\n");
+          reply.raw.write("data: " + JSON.stringify(chunk) + "\n\n");
         }
-        if (!reply.raw.destroyed) reply.raw.write("data: [DONE]\\n\\n");
+        if (!reply.raw.destroyed) reply.raw.write("data: [DONE]\n\n");
       } catch (error) { request.log.error({err:error},"OpenCode streaming failed"); }
       finally { reply.raw.end(); }
       return;
