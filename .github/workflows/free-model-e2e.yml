@@ -1,8 +1,6 @@
 name: Free-model E2E (anonymous)
 on:
   workflow_dispatch:
-  push:
-    branches: ["fix/19-anonymous-muse-e2e"]
 permissions:
   contents: read
 jobs:
