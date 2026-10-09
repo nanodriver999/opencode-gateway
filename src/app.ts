@@ -64,14 +64,15 @@ export function createApp(config: GatewayConfig, runtime: OpenCodeRuntime) {
         reply.raw.writeHead(200,{"content-type":"text/event-stream; charset=utf-8","cache-control":"no-cache","connection":"keep-alive"});
         for (const chunk of chunks) {
           if (reply.raw.destroyed) break;
-          reply.raw.write("data: "+JSON.stringify(chunk)+"\\n\\n");
+          reply.raw.write("data: "+JSON.stringify(chunk)+"\n\n");
         }
-        if (!reply.raw.destroyed) reply.raw.write("data: [DONE]\\n\\n");
+        if (!reply.raw.destroyed) reply.raw.write("data: [DONE]\n\n");
         reply.raw.end();
         return;
       }
       try { return await completeToolRequest(runtime, request.body, config.OPENCODE_PROVIDER,config.GATEWAY_UPSTREAM_TIMEOUT_MS); }
       catch (error) {
+        if (error instanceof GatewayTimeoutError) return reply.code(504).send({error:{message:"Upstream request timed out",type:"timeout_error",code:"upstream_timeout"}});
         if (error instanceof ChatInputError) return reply.code(400).send({error:{message:error.message,type:"invalid_request_error",code:"invalid_request"}});
         request.log.error({err:error},"Tool decision failed");
         return reply.code(502).send({error:{message:"Tool decision unavailable",type:"api_error",code:"upstream_error"}});
@@ -97,6 +98,7 @@ export function createApp(config: GatewayConfig, runtime: OpenCodeRuntime) {
     }
     try { return await completeChat(runtime, request.body, config.OPENCODE_PROVIDER,config.GATEWAY_UPSTREAM_TIMEOUT_MS); }
     catch (error) {
+      if (error instanceof GatewayTimeoutError) return reply.code(504).send({error:{message:"Upstream request timed out",type:"timeout_error",code:"upstream_timeout"}});
       if (error instanceof ChatInputError) return reply.code(400).send({error:{message:error.message,type:"invalid_request_error",code:"invalid_request"}});
       request.log.error({err:error},"OpenCode completion failed");
       return reply.code(502).send({error:{message:"Upstream OpenCode request failed",type:"api_error",code:"upstream_error"}});
