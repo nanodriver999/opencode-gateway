@@ -1,0 +1,77 @@
+name: Gateway server-mode matrix (live)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: ["external-pinned", "external-latest", "managed-latest"]
+    env:
+      VARIANT: ${{ matrix.variant }}
+      OPENCODE_PROVIDER: opencode
+      OPENCODE_MODEL: muse-spark-1.3-contributor-free
+      GATEWAY_HOST: 127.0.0.1
+      GATEWAY_UPSTREAM_TIMEOUT_MS: 30000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - name: Install CLI version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$VARIANT" = "external-pinned" ]; then
+            curl -fL --retry 3 https://github.com/anomalyco/opencode/releases/download/v1.18.34/opencode-linux-x64.tar.gz -o cli.tar.gz
+            echo "0f22479647226d1d2dd99595d20082ee7bda3870b62dc6a90b41efc1a71d7e9a  cli.tar.gz" | sha256sum -c -
+            tar -xzf cli.tar.gz
+            chmod +x opencode
+            echo "OPENCODE_BINARY=$PWD/opencode" >> "$GITHUB_ENV"
+          else
+            npm install --global opencode-ai
+            echo "OPENCODE_BINARY=$(command -v opencode)" >> "$GITHUB_ENV"
+          fi
+      - name: Start standalone OpenCode for external mode
+        if: matrix.variant != 'managed-latest'
+        shell: bash
+        run: |
+          "$OPENCODE_BINARY" serve --hostname 127.0.0.1 --port 4096 > "$RUNNER_TEMP/opencode.log" 2>&1 &
+          for i in $(seq 1 35); do
+            if curl -fsS http://127.0.0.1:4096/global/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          tail -n 40 "$RUNNER_TEMP/opencode.log"
+          exit 1
+      - name: Start OpenAI-compatible gateway
+        shell: bash
+        run: |
+          if [ "$VARIANT" = "managed-latest" ]; then
+            echo "OPENCODE_MODE=managed" >> "$GITHUB_ENV"
+            export OPENCODE_MODE=managed
+          else
+            echo "OPENCODE_MODE=external" >> "$GITHUB_ENV"
+            export OPENCODE_MODE=external
+          fi
+          export GATEWAY_API_KEY=local-matrix-test
+          echo "GATEWAY_API_KEY=$GATEWAY_API_KEY" >> "$GITHUB_ENV"
+          npm run build
+          node dist/index.js >"$RUNNER_TEMP/gateway.log" 2>&1 &
+          for i in $(seq 1 35); do
+            if curl -fsS -H "Authorization: Bearer $GATEWAY_API_KEY" http://127.0.0.1:3000/ready >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          tail -n 40 "$RUNNER_TEMP/gateway.log"
+          exit 1
+      - name: Exercise actual Muse response through Gateway
+        run: node scripts/probe-gateway-muse.mjs
+      - name: Diagnostics
+        if: failure()
+        run: |
+          tail -n 30 "$RUNNER_TEMP/gateway.log" || true
+          tail -n 30 "$RUNNER_TEMP/opencode.log" || true
