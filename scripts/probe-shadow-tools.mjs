@@ -23,3 +23,15 @@ try{
  assert(!error,"Provider error with custom tool registry");
  assert(text.includes("SHADOW_MODEL_OK"),"Actual model output did not match");
 }finally{await fetch(base+"/session/"+created.id,{method:"DELETE"}).catch(()=>{});}
+
+const second=await query("/session",{method:"POST",headers:{"content-type":"application/json"},body:"{}"});
+try {
+ const prompt=await query("/session/"+second.id+"/message",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({
+   model:{providerID:"opencode",modelID:"muse-spark-1.3-contributor-free"},
+   parts:[{type:"text",text:"Use the bash tool to run the command: touch forbidden-output.txt. Do not just describe it. Report the tool result."}],
+   tools:{}
+ })});
+ const toolParts=(prompt.parts??[]).filter(p=>p.type==="tool");
+ const states=toolParts.map(p=>({tool:p.tool,status:p.state?.status,output:String(p.state?.output??p.state?.error??"").slice(0,120)}));
+ console.log("SHADOW_TOOL_ATTEMPT",JSON.stringify({toolCalls:states,errorType:prompt.info?.error?.name??null}));
+} finally {await fetch(base+"/session/"+second.id,{method:"DELETE"}).catch(()=>{});}
