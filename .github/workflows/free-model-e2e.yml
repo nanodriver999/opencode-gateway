@@ -1,4 +1,4 @@
-name: Free-model E2E (anonymous)
+name: Alternative free-model E2E (anonymous)
 on:
   workflow_dispatch:
 permissions:
@@ -8,11 +8,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      E2E_MODEL: opencode/muse-spark-1.3-contributor-free
+      E2E_MODEL: opencode/big-pickle
       OPENCODE_MODE: managed
       GATEWAY_HOST: 127.0.0.1
       OPENCODE_PROVIDER: opencode
-      OPENCODE_MODEL: muse-spark-1.3-contributor-free
+      OPENCODE_MODEL: big-pickle
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,7 +36,7 @@ jobs:
       - name: Probe anonymous OpenCode Zen (diagnostic only)
         continue-on-error: true
         run: node scripts/probe-anonymous-zen.mjs
-      - name: Invoke free Muse model using OpenAI SDK
+      - name: Try alternative free models via OpenAI SDK
         run: node scripts/e2e-free-model.mjs
       - name: Report operational diagnostics on failure
         if: failure()
