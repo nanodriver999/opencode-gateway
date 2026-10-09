@@ -64,9 +64,9 @@ export function createApp(config: GatewayConfig, runtime: OpenCodeRuntime) {
         reply.raw.writeHead(200,{"content-type":"text/event-stream; charset=utf-8","cache-control":"no-cache","connection":"keep-alive"});
         for (const chunk of chunks) {
           if (reply.raw.destroyed) break;
-          reply.raw.write("data: "+JSON.stringify(chunk)+"\\n\\n");
+          reply.raw.write("data: "+JSON.stringify(chunk)+"\n\n");
         }
-        if (!reply.raw.destroyed) reply.raw.write("data: [DONE]\\n\\n");
+        if (!reply.raw.destroyed) reply.raw.write("data: [DONE]\n\n");
         reply.raw.end();
         return;
       }
