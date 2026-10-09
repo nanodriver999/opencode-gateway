@@ -8,6 +8,6 @@ The existing CI remains credential-free and tests mocked OpenCode calls. Unlike 
 
 Run **Actions → Free-model E2E (anonymous) → Run workflow** to repeat the live check. No repository Actions secrets or variables are required.
 
-The branch-specific push trigger for `fix/19-anonymous-muse-e2e` is intended for one-time implementation verification and should be removed after successful merge to avoid accidental repeat runs on later pushes.
+During the PR verification, an anonymous GitHub-hosted runner received HTTP **403 FreeTierError** directly from OpenCode Zen using the public credential; the gateway consequently returned HTTP 502 for the same model. This is a verified upstream free-tier access denial in that runner, not evidence that an individual OpenCode API key is required. The live test has therefore **not passed**. Run the workflow manually to recheck when provider policy or runner conditions change.
 
 Test assertions cover model listing, text response, and SSE response; they do not yet validate native function calling. Do not substitute paid models.
