@@ -1,0 +1,60 @@
+name: OpenCode version matrix (live)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        cli: ["1.18.34", "latest"]
+        sdk: ["http", "1.1.53", "1.4.3"]
+    env:
+      CLI_VERSION: ${{ matrix.cli }}
+      SDK_VERSION: ${{ matrix.sdk }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install OpenCode
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$CLI_VERSION" = "latest" ]; then
+            npm install -g opencode-ai
+            echo "OPENCODE_BINARY=$(command -v opencode)" >> "$GITHUB_ENV"
+          else
+            curl -fL --retry 3 "https://github.com/anomalyco/opencode/releases/download/v1.18.34/opencode-linux-x64.tar.gz" -o cli.tar.gz
+            echo "0f22479647226d1d2dd99595d20082ee7bda3870b62dc6a90b41efc1a71d7e9a  cli.tar.gz" | sha256sum -c -
+            tar -xzf cli.tar.gz
+            chmod +x opencode
+            echo "OPENCODE_BINARY=$PWD/opencode" >> "$GITHUB_ENV"
+          fi
+      - name: Install selected SDK
+        if: matrix.sdk != 'http'
+        run: |
+          mkdir -p sdk-test
+          cd sdk-test
+          npm init -y
+          npm install --no-audit --no-fund "@opencode-ai/sdk@$SDK_VERSION"
+      - name: Start OpenCode CLI server
+        shell: bash
+        run: |
+          "$OPENCODE_BINARY" --version
+          "$OPENCODE_BINARY" serve --hostname 127.0.0.1 --port 4096 >"$RUNNER_TEMP/opencode.log" 2>&1 &
+          for n in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:4096/global/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          tail -n 50 "$RUNNER_TEMP/opencode.log"
+          exit 1
+      - name: Test model inference
+        run: node scripts/probe-version-matrix.mjs
+      - name: Diagnostics
+        if: failure()
+        run: |
+          tail -n 40 "$RUNNER_TEMP/opencode.log" || true
