@@ -7,6 +7,7 @@ import { ChatInputError, completeChat } from "./openai/handler.js";
 import { listModels } from "./openai/models.js";
 import { streamChat } from "./openai/stream.js";
 import { normalizeChatRequest } from "./openai/chat-contract.js";
+import { completeToolRequest } from "./openai/client-tools.js";
 
 export function createApp(config: GatewayConfig, runtime: OpenCodeRuntime) {
   const app = Fastify({ logger: { redact: ["req.headers.authorization", "req.headers.x-api-key"] }, bodyLimit: 1024 * 1024 });
@@ -40,6 +41,14 @@ export function createApp(config: GatewayConfig, runtime: OpenCodeRuntime) {
     } catch { return reply.code(502).send({error:{message:"Unable to retrieve OpenCode models",type:"api_error",code:"upstream_error"}}); }
   });
   app.post("/v1/chat/completions", async (request, reply) => {
+    if (request.body && typeof request.body === "object" && "tools" in request.body) {
+      try { return await completeToolRequest(runtime, request.body, config.OPENCODE_PROVIDER); }
+      catch (error) {
+        if (error instanceof ChatInputError) return reply.code(400).send({error:{message:error.message,type:"invalid_request_error",code:"invalid_request"}});
+        request.log.error({err:error},"Tool decision failed");
+        return reply.code(502).send({error:{message:"Tool decision unavailable",type:"api_error",code:"upstream_error"}});
+      }
+    }
     if ((request.body as {stream?: unknown})?.stream === true) {
       try { normalizeChatRequest({...(request.body as object), stream:false}); }
       catch (error) {
