@@ -33,6 +33,8 @@ jobs:
           done
           echo "::error::Gateway did not become ready"
           exit 1
+      - name: Compare correct anonymous Zen endpoint responses
+        run: node scripts/probe-free-provider.mjs
       - name: Probe anonymous OpenCode Zen (diagnostic only)
         continue-on-error: true
         run: node scripts/probe-anonymous-zen.mjs
