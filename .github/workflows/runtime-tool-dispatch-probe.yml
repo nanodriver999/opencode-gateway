@@ -1,6 +1,11 @@
 name: Probe actual OpenCode runtime tool dispatch
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/probe-runtime-tool-dispatch.mjs'
+      - '.github/workflows/runtime-tool-dispatch-probe.yml'
+      - 'sandbox/.opencode/plugins/deny-tools.js'
 permissions:
   contents: read
 jobs:
