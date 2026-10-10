@@ -59,6 +59,7 @@ export function createApp(config: GatewayConfig, runtime: OpenCodeRuntime) {
           chunks = [];
           for await (const chunk of streamToolRequest(runtime,request.body,config.OPENCODE_PROVIDER)) chunks.push(chunk);
         } catch (error) {
+          if (error instanceof ProviderFailure) return reply.code(502).send({error:{message:"Upstream provider rejected model request",type:"api_error",code:error.code}});
           request.log.error({err:error},"Tool streaming preparation failed");
           return reply.code(502).send({error:{message:"Upstream tool decision failed",type:"api_error"}});
         }
