@@ -54,6 +54,8 @@ jobs:
           done
           tail -n 80 "$RUNNER_TEMP/gateway.log"
           exit 1
+      - name: Compare free model plain and JSON schema responses
+        run: node scripts/probe-structured-free.mjs
       - name: Live client-executed function call and tool result
         env:
           GATEWAY_API_KEY: temporary-testing-only
