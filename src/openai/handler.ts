@@ -1,3 +1,4 @@
+import { INTERNAL_TOOLS_DISABLED } from "../opencode/tool-policy.js";
 import { classifyProviderFailure } from "./upstream-errors.js";
 import { withDeadline } from "../opencode/deadline.js";
 import { randomUUID } from "node:crypto";
@@ -20,7 +21,7 @@ export async function completeChat(runtime: OpenCodeRuntime, payload: unknown, d
       ...(request.system ? { system: request.system } : {}),
       parts: request.parts,
       ...(request.format ? {format:request.format} : {}),
-      tools: { bash: false, edit: false, write: false, read: false, glob: false, grep: false, webfetch: false },
+      tools: INTERNAL_TOOLS_DISABLED,
     }, {signal}),timeoutMs);
     if (result.error || !result.data) throw new Error("OpenCode model response failed");
     if (result.data.info.error) throw classifyProviderFailure(result.data.info.error);

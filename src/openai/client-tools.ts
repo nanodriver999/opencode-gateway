@@ -1,3 +1,4 @@
+import { INTERNAL_TOOLS_DISABLED } from "../opencode/tool-policy.js";
 import Ajv from "ajv";
 import { classifyProviderFailure } from "./upstream-errors.js";
 import { withDeadline } from "../opencode/deadline.js";
@@ -90,7 +91,7 @@ export async function completeToolRequest(runtime:OpenCodeRuntime,body:unknown,d
   try {
     const result=await withDeadline(signal=>runtime.client.session.prompt({sessionID,model,system:input.system,
       parts:[{type:"text",text:input.prompt}],format:{type:"json_schema",schema},
-      tools:{bash:false,edit:false,write:false,read:false,glob:false,grep:false,webfetch:false}}, {signal}),timeoutMs);
+      tools: INTERNAL_TOOLS_DISABLED}, {signal}),timeoutMs);
     if(result.error||!result.data) throw new Error("OpenCode model error");
     if(result.data.info.error) throw classifyProviderFailure(result.data.info.error);
     const raw=result.data.info.structured??result.data.parts.filter(p=>p.type==="text").map(p=>p.text).join("");
