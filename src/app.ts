@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import { GatewayTimeoutError } from "./opencode/deadline.js";
+import { ProviderFailure } from "./openai/upstream-errors.js";
 import { createRequestGuard } from "./security/request-guard.js";
 import type { GatewayConfig } from "./config.js";
 import type { OpenCodeRuntime } from "./opencode/client.js";
@@ -47,7 +48,8 @@ export function createApp(config: GatewayConfig, runtime: OpenCodeRuntime) {
       if ((request.body as {stream?:unknown}).stream === true) {
         try { prepareToolRequest({...(request.body as object),stream:false}); }
         catch (error) {
-          if (error instanceof GatewayTimeoutError) return reply.code(504).send({error:{message:"Upstream request timed out",type:"timeout_error",code:"upstream_timeout"}});
+          if (error instanceof ProviderFailure) return reply.code(502).send({error:{message:"Upstream provider rejected model request",type:"api_error",code:error.code}});
+        if (error instanceof GatewayTimeoutError) return reply.code(504).send({error:{message:"Upstream request timed out",type:"timeout_error",code:"upstream_timeout"}});
         if (error instanceof ChatInputError) return reply.code(400).send({error:{message:error.message,type:"invalid_request_error"}});
           throw error;
         }
@@ -72,6 +74,7 @@ export function createApp(config: GatewayConfig, runtime: OpenCodeRuntime) {
       }
       try { return await completeToolRequest(runtime, request.body, config.OPENCODE_PROVIDER,config.GATEWAY_UPSTREAM_TIMEOUT_MS); }
       catch (error) {
+        if (error instanceof ProviderFailure) return reply.code(502).send({error:{message:"Upstream provider rejected model request",type:"api_error",code:error.code}});
         if (error instanceof GatewayTimeoutError) return reply.code(504).send({error:{message:"Upstream request timed out",type:"timeout_error",code:"upstream_timeout"}});
         if (error instanceof ChatInputError) return reply.code(400).send({error:{message:error.message,type:"invalid_request_error",code:"invalid_request"}});
         request.log.error({err:error},"Tool decision failed");
@@ -100,7 +103,8 @@ export function createApp(config: GatewayConfig, runtime: OpenCodeRuntime) {
     }
     try { return await completeChat(runtime, request.body, config.OPENCODE_PROVIDER,config.GATEWAY_UPSTREAM_TIMEOUT_MS); }
     catch (error) {
-      if (error instanceof GatewayTimeoutError) return reply.code(504).send({error:{message:"Upstream request timed out",type:"timeout_error",code:"upstream_timeout"}});
+      if (error instanceof ProviderFailure) return reply.code(502).send({error:{message:"Upstream provider rejected model request",type:"api_error",code:error.code}});
+        if (error instanceof GatewayTimeoutError) return reply.code(504).send({error:{message:"Upstream request timed out",type:"timeout_error",code:"upstream_timeout"}});
       if (error instanceof ChatInputError) return reply.code(400).send({error:{message:error.message,type:"invalid_request_error",code:"invalid_request"}});
       request.log.error({err:error},"OpenCode completion failed");
       return reply.code(502).send({error:{message:"Upstream OpenCode request failed",type:"api_error",code:"upstream_error"}});
