@@ -21,7 +21,7 @@ try {
   try {
     const history=await client.session.messages({sessionID:id});
     console.log("RUNTIME_TOOL_PROBE_HISTORY",JSON.stringify({errorName:history.error?.name??null,messages:history.data?.map(m=>({role:m.info?.role,error:m.info?.error?.name??null,finish:m.info?.finish??null,parts:m.parts?.map(p=>({type:p.type,tool:p.tool,state:p.state?.status}))}))??[]}));
-  } catch(e){console.log("RUNTIME_TOOL_PROBE_HISTORY_UNAVAILABLE",String(e?.message??e).slice(0,200));}
+  } catch(e){console.log("RUNTIME_TOOL_PROBE_HISTORY_UNAVAILABLE",e?.name??"unknown");}
 } catch(e) {
   // A hook throwing is an expected possible outcome; evidence must be in server logs.
   console.log("RUNTIME_TOOL_PROBE_REJECTED",String(e?.message??e).slice(0,200));
