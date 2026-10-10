@@ -1,7 +1,5 @@
 name: Live free JSON decision standalone
 on:
-  push:
-    branches: [test/27-json-repair-isolation]
   workflow_dispatch:
 permissions:
   contents: read
