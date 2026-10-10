@@ -17,11 +17,8 @@ jobs:
       - run: npm install -g opencode-ai
       - name: Start OpenCode isolated
         run: |
-          mkdir -p "$RUNNER_TEMP/isolated/.opencode/tools"
-          cp sandbox/.opencode/tools/*.ts "$RUNNER_TEMP/isolated/.opencode/tools/"
+          mkdir -p "$RUNNER_TEMP/isolated"
           cd "$RUNNER_TEMP/isolated"
-          printf '{"private":true,"type":"module"}\n' > package.json
-          npm install --no-audit --no-fund --no-save @opencode-ai/plugin
           printf 'DO_NOT_MODIFY\n' > protected.txt
           opencode serve --hostname 127.0.0.1 --port 4096 >"$RUNNER_TEMP/opencode.log" 2>&1 &
           for i in $(seq 1 40); do
