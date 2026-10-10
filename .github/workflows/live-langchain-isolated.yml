@@ -1,7 +1,5 @@
 name: Experimental live LangChain Muse integration
 on:
-  push:
-    branches: [test/32-live-langchain-isolated]
   workflow_dispatch:
 permissions:
   contents: read
