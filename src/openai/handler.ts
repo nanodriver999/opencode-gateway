@@ -1,3 +1,4 @@
+import { classifyProviderFailure } from "./upstream-errors.js";
 import { withDeadline } from "../opencode/deadline.js";
 import { randomUUID } from "node:crypto";
 import type { OpenCodeRuntime } from "../opencode/client.js";
@@ -22,7 +23,7 @@ export async function completeChat(runtime: OpenCodeRuntime, payload: unknown, d
       tools: { bash: false, edit: false, write: false, read: false, glob: false, grep: false, webfetch: false },
     }, {signal}),timeoutMs);
     if (result.error || !result.data) throw new Error("OpenCode model response failed");
-    if (result.data.info.error) throw new Error("OpenCode model returned an error");
+    if (result.data.info.error) throw classifyProviderFailure(result.data.info.error);
     return toChatCompletion(request.model, result.data, "chatcmpl-" + randomUUID().replace(/-/g, ""), Math.floor(Date.now()/1000));
   } finally {
     await runtime.client.session.delete({ sessionID }).catch(() => {});
