@@ -10,3 +10,7 @@ The experimental plugin loads, but these runs **do not** show runtime hook invoc
 
 ## Next experiment
 Use a supported inference backend with tool calling in a network/filesystem-isolated disposable worker, or a deterministic offline OpenCode model adapter that emits an actual runtime builtin tool call, before claiming enforcement. Verify a real `GATEWAY_TOOL_ATTEMPT_BLOCKED` hook marker, absence of side effects, and explicit provider-error classification. No provider credentials should be checked into CI.
+
+
+## Additional attack-surface finding
+The documented OpenCode server exposes a `POST /session/:id/shell` execution API separate from model-driven tools. A `tool.execute.before` plugin cannot be treated as protection of that API unless tested separately. Therefore, do not expose an untrusted OpenCode server merely because the tool hook blocks a model's tools. Bind to loopback, use access controls, and isolate execution at the OS/container boundary. The shell route is documented upstream; **no bypass experiment has yet been run here**.
