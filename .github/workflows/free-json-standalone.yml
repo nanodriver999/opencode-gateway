@@ -1,0 +1,33 @@
+name: Live free JSON decision standalone
+on:
+  push:
+    branches: [test/27-json-repair-isolation]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  json:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install -g opencode-ai
+      - name: Start standalone OpenCode server
+        shell: bash
+        run: |
+          opencode serve --hostname 127.0.0.1 --port 4096 </dev/null > "$RUNNER_TEMP/server.log" 2>&1 &
+          echo "OPENCODE_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 45); do
+            if curl --max-time 2 -fsS http://127.0.0.1:4096/global/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/server.log"
+          exit 1
+      - name: Run independent tool-choice JSON test
+        run: node scripts/probe-json-repair.mjs
+      - name: Diagnostics
+        if: failure()
+        run: tail -n 50 "$RUNNER_TEMP/server.log" || true
