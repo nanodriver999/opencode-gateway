@@ -1,0 +1,36 @@
+name: Live free JSON decision isolation
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install -g opencode-ai
+      - name: Start OpenCode isolated
+        run: |
+          mkdir -p "$RUNNER_TEMP/isolated"
+          cd "$RUNNER_TEMP/isolated"
+          printf 'DO_NOT_MODIFY\n' > protected.txt
+          opencode serve --hostname 127.0.0.1 --port 4096 >"$RUNNER_TEMP/opencode.log" 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:4096/global/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Live plain JSON tool-selection retries
+        run: node scripts/probe-json-repair.mjs
+      - name: Assert filesystem unchanged
+        if: always()
+        run: |
+          test "$(cat "$RUNNER_TEMP/isolated/protected.txt")" = DO_NOT_MODIFY
+          test ! -e "$RUNNER_TEMP/isolated/forbidden-output.txt"
+      - name: Diagnostics
+        if: failure()
+        run: tail -n 50 "$RUNNER_TEMP/opencode.log" || true
