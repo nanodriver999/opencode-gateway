@@ -87,7 +87,7 @@ export async function completeToolRequest(runtime:OpenCodeRuntime,body:unknown,d
   const sessionID=created.data.id;
   try {
     const result=await withDeadline(signal=>runtime.client.session.prompt({sessionID,model,system:input.system,
-      parts:[{type:"text",text:input.prompt}],format:{type:"json_schema",schema},
+      parts:[{type:"text",text:input.prompt}],
       tools: {}}, {signal}),timeoutMs);
     if(result.error||!result.data||result.data.info.error) throw new Error("OpenCode model error");
     const raw=result.data.info.structured??result.data.parts.filter(p=>p.type==="text").map(p=>p.text).join("");
