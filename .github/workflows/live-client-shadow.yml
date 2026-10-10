@@ -1,8 +1,6 @@
 name: Live client tool cycle with shadow tools
 on:
   workflow_dispatch:
-  push:
-    branches: ["test/25-langchain-shadow-live"]
 permissions:
   contents: read
 jobs:
