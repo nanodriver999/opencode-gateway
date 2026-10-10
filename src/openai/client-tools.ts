@@ -1,6 +1,7 @@
 import Ajv from "ajv";
 import { withDeadline } from "../opencode/deadline.js";
 import { randomUUID } from "node:crypto";
+import { decodeToolDecision } from "./tool-json.js";
 import type { OpenCodeRuntime } from "../opencode/client.js";
 import { ChatInputError, splitModel } from "./chat-contract.js";
 
@@ -91,8 +92,7 @@ export async function completeToolRequest(runtime:OpenCodeRuntime,body:unknown,d
       tools:{bash:false,edit:false,write:false,read:false,glob:false,grep:false,webfetch:false}}, {signal}),timeoutMs);
     if(result.error||!result.data||result.data.info.error) throw new Error("OpenCode model error");
     const raw=result.data.info.structured??result.data.parts.filter(p=>p.type==="text").map(p=>p.text).join("");
-    let response:unknown;
-    try {response=typeof raw==="string"?JSON.parse(raw):raw;} catch {throw new Error("Invalid model JSON");}
+    const response=decodeToolDecision(raw);
     if(!obj(response)||!Array.isArray(response.calls)||!["message","tool_calls"].includes(response.kind as string)) throw new Error("Invalid model decision");
     const validators = new Map(input.tools.map(tool => {
       try { return [tool.name, new Ajv.default({allErrors:true, strict:false}).compile(tool.parameters)] as const; }
