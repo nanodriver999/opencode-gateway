@@ -1,7 +1,5 @@
 name: Live OpenCode pre-tool deny hook experiment
 on:
-  push:
-    branches: [test/33-pretool-hook-denial]
   workflow_dispatch:
 permissions:
   contents: read
