@@ -40,6 +40,7 @@ jobs:
           curl --max-time 5 -fsS http://127.0.0.1:4096/global/health
       - name: Prove plugin loaded by runtime
         run: |
+          curl --max-time 10 -fsS -X POST -H "Content-Type: application/json" -d '{}' http://127.0.0.1:4096/session > "$RUNNER_TEMP/probe-session.json"
           for i in $(seq 1 15); do
             if grep -q GATEWAY_DENY_PLUGIN_LOADED "$RUNNER_TEMP/opencode.log"; then exit 0; fi
             sleep 1
