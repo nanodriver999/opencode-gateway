@@ -1,0 +1,68 @@
+name: Live OpenCode pre-tool deny hook experiment
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Dependencies
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+          npm install -g opencode-ai
+          python -m pip install "langchain-openai>=0.3,<2"
+      - name: Test plugin implementation directly
+        run: node scripts/test-pretool-deny.mjs
+      - name: Start OpenCode with project-scoped pre-tool hook
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/guarded/.opencode/plugins"
+          cp sandbox/.opencode/plugins/deny-tools.js "$RUNNER_TEMP/guarded/.opencode/plugins/"
+          printf 'DO_NOT_MODIFY\n' > "$RUNNER_TEMP/guarded/protected.txt"
+          cd "$RUNNER_TEMP/guarded"
+          opencode serve --hostname 127.0.0.1 --port 4096 </dev/null > "$RUNNER_TEMP/opencode.log" 2>&1 &
+          for i in $(seq 1 45); do
+            if curl --max-time 2 -fsS http://127.0.0.1:4096/global/health >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --max-time 5 -fsS http://127.0.0.1:4096/global/health
+      - name: Prove plugin loaded by runtime
+        run: |
+          curl --max-time 10 -fsS -X POST -H "Content-Type: application/json" -d '{}' http://127.0.0.1:4096/session > "$RUNNER_TEMP/probe-session.json"
+          for i in $(seq 1 15); do
+            if grep -q GATEWAY_DENY_PLUGIN_LOADED "$RUNNER_TEMP/opencode.log"; then exit 0; fi
+            sleep 1
+          done
+          tail -n 100 "$RUNNER_TEMP/opencode.log"
+          exit 1
+      - name: Start experimental Gateway
+        run: |
+          node scripts/live-langchain-isolated-bridge.mjs >"$RUNNER_TEMP/bridge.log" 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3099/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          tail -n 80 "$RUNNER_TEMP/bridge.log"
+          exit 1
+      - name: Run real LangChain client-owned function cycle
+        run: python scripts/langchain-tool-contract.py
+      - name: Assert no host file mutation
+        if: always()
+        run: |
+          test "$(cat "$RUNNER_TEMP/guarded/protected.txt")" = DO_NOT_MODIFY
+          test ! -e "$RUNNER_TEMP/guarded/forbidden-output.txt"
+      - name: Diagnostics
+        if: failure()
+        run: |
+          tail -n 65 "$RUNNER_TEMP/opencode.log" || true
+          tail -n 65 "$RUNNER_TEMP/bridge.log" || true
