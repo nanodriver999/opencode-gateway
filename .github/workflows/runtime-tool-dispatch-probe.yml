@@ -1,0 +1,49 @@
+name: Probe actual OpenCode runtime tool dispatch
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  runtime-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install dependencies
+        run: |
+          npm ci --no-audit --no-fund
+          npm install -g opencode-ai
+      - name: Start guarded OpenCode
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/guarded/.opencode/plugins"
+          cp sandbox/.opencode/plugins/deny-tools.js "$RUNNER_TEMP/guarded/.opencode/plugins/"
+          printf 'DO_NOT_MODIFY\n' > "$RUNNER_TEMP/guarded/protected.txt"
+          cd "$RUNNER_TEMP/guarded"
+          opencode serve --hostname 127.0.0.1 --port 4096 </dev/null > "$RUNNER_TEMP/opencode.log" 2>&1 &
+          for i in $(seq 1 45); do
+            if curl --max-time 2 -fsS http://127.0.0.1:4096/global/health >/dev/null; then break; fi
+            sleep 1
+          done
+          curl --max-time 5 -fsS http://127.0.0.1:4096/global/health
+      - name: Attempt actual runtime dispatch
+        run: node scripts/probe-runtime-tool-dispatch.mjs
+        timeout-minutes: 5
+      - name: Require concrete runtime blocking evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q GATEWAY_DENY_PLUGIN_LOADED "$RUNNER_TEMP/opencode.log" || { echo "FAIL: plugin was not loaded"; exit 1; }
+          grep -q '"tool":"bash"' "$RUNNER_TEMP/opencode.log" || { echo "INCONCLUSIVE: no actual bash tool dispatch reached the hook"; exit 1; }
+          grep -q GATEWAY_TOOL_ATTEMPT_BLOCKED "$RUNNER_TEMP/opencode.log" || { echo "FAIL: no pre-tool rejection marker"; exit 1; }
+          test "$(cat "$RUNNER_TEMP/guarded/protected.txt")" = DO_NOT_MODIFY
+          test ! -e "$RUNNER_TEMP/guarded/forbidden-output.txt"
+          echo "REAL_OPENCODE_RUNTIME_BASH_DISPATCH_DENIED"
+      - name: Diagnostics
+        if: always()
+        run: |
+          grep -E 'GATEWAY_|Error|error' "$RUNNER_TEMP/opencode.log" | tail -n 60 || true
+          tail -n 30 "$RUNNER_TEMP/opencode.log" || true
