@@ -17,10 +17,10 @@ try {
     tools:{bash:true,read:false,write:false,edit:false,glob:false,grep:false,webfetch:false,task:false}
   });
   if(probe.error)console.log("RUNTIME_TOOL_PROBE_PROVIDER_ERROR",JSON.stringify({name:probe.error.name??"unknown"}));
-  else console.log("RUNTIME_TOOL_PROBE_RESPONSE_RECEIVED",JSON.stringify({parts:probe.data?.parts?.map(p=>({type:p.type,tool:p.tool,state:p.state?.status}))??[],error:probe.data?.info?.error??null,finish:probe.data?.info?.finish??null}));
+  else console.log("RUNTIME_TOOL_PROBE_RESPONSE_RECEIVED",JSON.stringify({parts:probe.data?.parts?.map(p=>({type:p.type,tool:p.tool,state:p.state?.status}))??[],errorName:probe.data?.info?.error?.name??null,errorStatus:probe.data?.info?.error?.data?.statusCode??null,errorKind:probe.data?.info?.error?.data?.responseBody?.includes("FreeTierError")?"FREE_TIER_RESTRICTED":"OTHER",finish:probe.data?.info?.finish??null}));
   try {
     const history=await client.session.messages({sessionID:id});
-    console.log("RUNTIME_TOOL_PROBE_HISTORY",JSON.stringify({error:history.error??null,messages:history.data?.map(m=>({role:m.info?.role,error:m.info?.error?.name??null,finish:m.info?.finish??null,parts:m.parts?.map(p=>({type:p.type,tool:p.tool,state:p.state?.status}))}))??[]}));
+    console.log("RUNTIME_TOOL_PROBE_HISTORY",JSON.stringify({errorName:history.error?.name??null,messages:history.data?.map(m=>({role:m.info?.role,error:m.info?.error?.name??null,finish:m.info?.finish??null,parts:m.parts?.map(p=>({type:p.type,tool:p.tool,state:p.state?.status}))}))??[]}));
   } catch(e){console.log("RUNTIME_TOOL_PROBE_HISTORY_UNAVAILABLE",String(e?.message??e).slice(0,200));}
 } catch(e) {
   // A hook throwing is an expected possible outcome; evidence must be in server logs.
