@@ -1,0 +1,26 @@
+name: Runtime probe evidence classifier
+on:
+  pull_request:
+    paths:
+      - 'scripts/runtime-probe-evidence.mjs'
+      - 'scripts/test-runtime-probe-evidence.mjs'
+      - '.github/workflows/runtime-probe-evidence.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/runtime-probe-evidence.mjs'
+      - 'scripts/test-runtime-probe-evidence.mjs'
+      - '.github/workflows/runtime-probe-evidence.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  classifier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node scripts/test-runtime-probe-evidence.mjs
