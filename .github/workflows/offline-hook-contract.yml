@@ -1,0 +1,26 @@
+name: Offline pretool hook contract
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'sandbox/.opencode/plugins/deny-tools.js'
+      - 'scripts/offline-hook-contract.mjs'
+      - '.github/workflows/offline-hook-contract.yml'
+  pull_request:
+    paths:
+      - 'sandbox/.opencode/plugins/deny-tools.js'
+      - 'scripts/offline-hook-contract.mjs'
+      - '.github/workflows/offline-hook-contract.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node scripts/offline-hook-contract.mjs
