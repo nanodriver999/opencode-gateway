@@ -32,7 +32,8 @@ export function validateFunctionDecision(raw:unknown, tools:FunctionDeclaration[
     if(!obj(c)||typeof c.name!=="string"||!obj(c.arguments))
       throw new InvalidDecisionError();
     const check=validators.get(c.name);
-    if(!check||!check(c.arguments))throw new InvalidDecisionError("Disallowed function or arguments");
+    if(!check)throw new InvalidDecisionError("Disallowed function");
+    if(!check(c.arguments))throw new InvalidDecisionError("Tool arguments violate declared JSON Schema");
     if(typeof choice==="object"&&c.name!==choice.name)
       throw new InvalidDecisionError("Wrong selected function");
     return {name:c.name,arguments:c.arguments};
