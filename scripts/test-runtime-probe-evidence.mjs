@@ -4,6 +4,8 @@ const cases=[
   [{pluginLoaded:true,blockedTools:["bash"]},"pass","RUNTIME_BASH_BLOCK_MARKER"],
   [{pluginLoaded:true,providerStatus:403,providerErrorKind:"FREE_TIER_RESTRICTED"},"inconclusive","PROVIDER_REJECTED_BEFORE_DISPATCH"],
   [{pluginLoaded:true},"inconclusive","NO_RUNTIME_DISPATCH_EVIDENCE"],
+  [{pluginLoaded:true,blockedTools:["bash"],providerStatus:403,providerErrorKind:"FREE_TIER_RESTRICTED"},"inconclusive","PROVIDER_REJECTED_BEFORE_DISPATCH"],
+  [{pluginLoaded:true,blockedTools:["bash"],providerStatus:502,providerErrorKind:"OTHER"},"inconclusive","UPSTREAM_ERROR_PRESENT"],
   [{pluginLoaded:false,blockedTools:["bash"]},"fail","PLUGIN_NOT_LOADED"],
   [{pluginLoaded:true,blockedTools:["bash"],sideEffects:true},"fail","SIDE_EFFECT_DETECTED"],
 ];
