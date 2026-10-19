@@ -1,9 +1,8 @@
 import { INTERNAL_TOOLS_DISABLED } from "../opencode/tool-policy.js";
-import Ajv from "ajv";
 import { classifyProviderFailure } from "./upstream-errors.js";
 import { withDeadline } from "../opencode/deadline.js";
 import { randomUUID } from "node:crypto";
-import { decodeToolDecision } from "./tool-json.js";
+import { validateFunctionDecision, type FunctionChoice } from "./prompt-decision.js";
 import type { OpenCodeRuntime } from "../opencode/client.js";
 import { ChatInputError, splitModel } from "./chat-contract.js";
 
@@ -95,27 +94,20 @@ export async function completeToolRequest(runtime:OpenCodeRuntime,body:unknown,d
     if(result.error||!result.data) throw new Error("OpenCode model error");
     if(result.data.info.error) throw classifyProviderFailure(result.data.info.error);
     const raw=result.data.info.structured??result.data.parts.filter(p=>p.type==="text").map(p=>p.text).join("");
-    const response=decodeToolDecision(raw);
-    if(!obj(response)||!Array.isArray(response.calls)||!["message","tool_calls"].includes(response.kind as string)) throw new Error("Invalid model decision");
-    const validators = new Map(input.tools.map(tool => {
-      try { return [tool.name, new Ajv.default({allErrors:true, strict:false}).compile(tool.parameters)] as const; }
-      catch { throw new ChatInputError("Invalid function parameter schema"); }
+    // Share the same strict tool-call decision validation as the isolated research adapter.
+    // This only validates model output; client functions remain owned by LangChain.
+    const choice: FunctionChoice = typeof input.choice === "string"
+      ? input.choice as "auto" | "none" | "required"
+      : {name:(input.choice as {function:{name:string}}).function.name};
+    const decision=validateFunctionDecision(raw,input.tools,choice);
+    const calls=decision.calls.map(call=>({
+      id:"call_"+randomUUID().replace(/-/g,""),type:"function" as const,
+      function:{name:call.name,arguments:JSON.stringify(call.arguments)}
     }));
-    const allowed=new Set(input.tools.map(t=>t.name));
-    const calls=response.calls.map((c:unknown)=>{
-      if(!obj(c)||typeof c.name!=="string"||!allowed.has(c.name)||!obj(c.arguments)) throw new Error("Invalid model function call");
-      if(!validators.get(c.name)?.(c.arguments)) throw new Error("Tool arguments violate declared JSON Schema");
-      if(typeof input.choice==="object"&&(input.choice as {function:{name:string}}).function.name!==c.name) throw new Error("Unexpected function");
-      return {id:"call_"+randomUUID().replace(/-/g,""),type:"function" as const,function:{name:c.name,arguments:JSON.stringify(c.arguments)}};
-    });
-    if((input.choice==="none"&&calls.length)||(input.choice==="required"&&!calls.length)||
-      (typeof input.choice==="object"&&!calls.length)||(response.kind==="tool_calls")!==Boolean(calls.length))
-      throw new Error("Model violated tool_choice");
-    if(!calls.length&&typeof response.content!=="string") throw new Error("Invalid answer");
     const tokens=result.data.info.tokens;
     return {id:"chatcmpl-"+randomUUID().replace(/-/g,""),object:"chat.completion" as const,
       created:Math.floor(Date.now()/1000),model:input.model,
-      choices:[{index:0,message:{role:"assistant",content:calls.length?null:response.content,...(calls.length?{tool_calls:calls}:{})},
+      choices:[{index:0,message:{role:"assistant",content:calls.length?null:decision.content,...(calls.length?{tool_calls:calls}:{})},
         finish_reason:calls.length?"tool_calls":"stop",logprobs:null}],
       usage:{prompt_tokens:tokens.input,completion_tokens:tokens.output,total_tokens:tokens.input+tokens.output}};
   } finally {await runtime.client.session.delete({sessionID}).catch(()=>{});}
